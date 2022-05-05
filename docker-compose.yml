@@ -14,6 +14,8 @@ services:
     volumes:
       - db-store:/var/lib/postgresql/data
     environment:
-      - POSTGRES_PASSWORD=password!
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: adminpass
+      POSTGRES_DB: bookshelf_development
 volumes:
   db-store:
