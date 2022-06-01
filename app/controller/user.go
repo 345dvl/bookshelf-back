@@ -10,7 +10,7 @@ type User struct {
 // 	return c.JSON(http.StatusOK, user)
 // }
 
-func getUser() (user User) {
+func GetUser() (user User) {
 	user = User{"hato", "k.f.kntn@gmail.com"}
 	return
 }
