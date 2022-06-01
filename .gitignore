@@ -25,3 +25,4 @@ go.work
 
 tmp/
 firebase-secretkey.json
+bookshelf-back-firebase-adminsdk.json

@@ -3,13 +3,18 @@ package firebaseauth
 import (
 	"context"
 	"log"
-	"firebase.google.com/go/v4"
+
+	firebase "firebase.google.com/go/v4"
+	"google.golang.org/api/option"
 )
 
 func Init() (app *firebase.App, err error) {
-	app, err = firebase.NewApp(context.Background(), nil)
+	ctx := context.Background()
+	opt := option.WithCredentialsFile("bookshelf-back-firebase-adminsdk.json")
+
+	app, err = firebase.NewApp(ctx, nil, opt)
 	if err != nil {
-		log.Fatalf("error initializing app: %v\n", err)
+		log.Fatalf("error initializing firebase app: %v\n", err)
 	}
 	return
 }
