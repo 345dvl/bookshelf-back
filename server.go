@@ -46,8 +46,9 @@ func createUser(c echo.Context) error {
 	}
 
 	params := (&auth.UserToCreate{}).
-		Email("a1@a.com").
+		Email("a2@a.com").
 		EmailVerified(false).
+		DisplayName("John Doe").
 		Password("passoword!").
 		Disabled(false)
 	u, err := client.CreateUser(ctx, params)
