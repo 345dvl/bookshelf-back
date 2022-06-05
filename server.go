@@ -60,6 +60,35 @@ func createUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, u)
 }
 
+func updateUser(c echo.Context) error {
+	ctx := context.Background()
+	app, err := FirebaseInit()
+	if err != nil {
+		log.Fatalf("error initializing firebase app: %v\n", err)
+	}
+	client, err := app.Auth(ctx)
+	if err != nil {
+		log.Fatalf("error initializing firebase client: %v\n", err)
+	}
+
+	var uid string
+
+	params := (&auth.UserToUpdate{}).
+		Email("new1@a.com").
+		EmailVerified(false).
+		DisplayName("Alder").
+		Password("newpassoword!").
+		Disabled(false)
+	u, err := client.UpdateUser(ctx, uid, params)
+	if err != nil {
+		log.Fatalf("error updating user: %v\n", err)
+	}
+
+	log.Printf("Successfully updated user: %#v\n", u.UserInfo)
+
+	return c.JSON(http.StatusOK, u)
+}
+
 func main() {
 	e := echo.New()
 	e.GET("/", func(c echo.Context) error {
@@ -67,5 +96,6 @@ func main() {
 	})
 	e.GET("/users", getUser)
 	e.POST("/users", createUser)
+	e.PATCH("/users", updateUser)
 	e.Logger.Fatal(e.Start(":8080"))
 }
