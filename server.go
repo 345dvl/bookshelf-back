@@ -30,8 +30,24 @@ func FirebaseInit() (app *firebase.App, err error) {
 }
 
 func getUser(c echo.Context) error {
-	user := User{"hato", "k.f.kntn@gmail.com"}
-	return c.JSON(http.StatusOK, user)
+	ctx := context.Background()
+	app, err := FirebaseInit()
+	if err != nil {
+		log.Fatalf("error initializing firebase app: %v\n", err)
+	}
+	client, err := app.Auth(ctx)
+	if err != nil {
+		log.Fatalf("error initializing firebase client: %v\n", err)
+	}
+
+	uid := "03bLtdlTyeT7V1NUQTlABbkhLRB3"
+	u, err := client.GetUser(ctx, uid)
+	if err != nil {
+			log.Fatalf("error getting user %s: %v\n", uid, err)
+	}
+	log.Printf("Successfully fetched user data: %#v\n", u.UserInfo)
+
+	return c.JSON(http.StatusOK, u)
 }
 
 func createUser(c echo.Context) error {
