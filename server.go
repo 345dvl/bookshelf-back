@@ -13,9 +13,11 @@ import (
 
 // 一旦mainパッケージだけで実装。後でパッケージ分ける
 
-type User struct {
-	Ñame  string
-	Email string
+type UserRegistrationParams struct {
+	Name                 string `json:"name"`
+	Email                string `json:"email"`
+	Password             string `json:"password"`
+	PasswordConfirmation string `json:"password_confirmation"`
 }
 
 func FirebaseInit() (app *firebase.App, err error) {
@@ -61,15 +63,24 @@ func createUser(c echo.Context) error {
 		log.Fatalf("error initializing firebase client: %v\n", err)
 	}
 
-	params := (&auth.UserToCreate{}).
-		Email("a2@a.com").
+	params := new(UserRegistrationParams)
+	if err := c.Bind(params); err != nil {
+		return c.JSON(http.StatusBadRequest, "エラーが発生しました。不正なリクエストです。")
+	}
+
+	if params.Password != params.PasswordConfirmation {
+		return c.JSON(http.StatusBadRequest, "エラーが発生しました。パスワードと確認用パスワードが一致していません。")
+	}
+
+	createParams := (&auth.UserToCreate{}).
+		Email(params.Email).
 		EmailVerified(false).
-		DisplayName("John Doe").
-		Password("passoword!").
+		DisplayName(params.Name).
+		Password(params.Password).
 		Disabled(false)
-	u, err := client.CreateUser(ctx, params)
+	u, err := client.CreateUser(ctx, createParams)
 	if err != nil {
-		log.Fatalf("error creating user: %v\n", err)
+		return c.JSON(http.StatusBadRequest, "エラーが発生しました。不正なリクエストです。")
 	}
 	log.Printf("Successfully created user: %#v\n", u.UserInfo)
 
