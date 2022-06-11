@@ -116,6 +116,12 @@ func updateUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, u)
 }
 
+func deleteUser(c echo.Context) error {
+	var err error
+	return err
+}
+
+
 func main() {
 	e := echo.New()
 	e.GET("/", func(c echo.Context) error {
@@ -124,5 +130,6 @@ func main() {
 	e.GET("/users", getUser)
 	e.POST("/users", createUser)
 	e.PATCH("/users", updateUser)
+	e.DELETE("/users/:id", deleteUser)
 	e.Logger.Fatal(e.Start(":8080"))
 }
