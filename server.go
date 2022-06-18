@@ -121,6 +121,25 @@ func deleteUser(c echo.Context) error {
 	return err
 }
 
+func createCustomToken(uid string) (customToken string){
+	ctx := context.Background()
+	app, err := FirebaseInit()
+	if err != nil {
+		log.Fatalf("error initializing firebase app: %v\n", err)
+	}
+	client, err := app.Auth(ctx)
+	if err != nil {
+		log.Fatalf("error initializing firebase client: %v\n", err)
+	}
+
+	customToken, err = client.CustomToken(ctx, uid)
+	if err != nil {
+		log.Fatalf("error minting custom token: %v\n", err)
+	}
+
+	return
+}
+
 
 func main() {
 	e := echo.New()
