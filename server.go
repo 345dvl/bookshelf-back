@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
 
 	firebase "firebase.google.com/go"
 	"firebase.google.com/go/auth"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo"
 	"google.golang.org/api/option"
 )
@@ -19,6 +24,36 @@ type UserRegistrationParams struct {
 	Email                string `json:"email"`
 	Password             string `json:"password"`
 	PasswordConfirmation string `json:"password_confirmation"`
+}
+
+type UserLoginParams struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type IDToken struct {
+	IDToken string `json:"idToken"`
+}
+
+const envFile string = "./application.env"
+
+func GetEnv(key string) (value string) {
+	if env := os.Getenv(key); env != "" {
+		value = env
+	} else {
+		loadFile := godotenv.Load(envFile)
+		env, err := godotenv.Read(envFile)
+
+		if (loadFile != nil) || (err != nil) {
+			var message = "Error loading .env file"
+			log.Print(message)
+			panic(message)
+		}
+
+		value = env[key]
+	}
+
+	return
 }
 
 func FirebaseInit() (app *firebase.App, err error) {
@@ -122,55 +157,64 @@ func deleteUser(c echo.Context) error {
 	return err
 }
 
-func createCustomTokenByUID(uid string) (customToken string){
-	ctx := context.Background()
-	app, err := FirebaseInit()
-	if err != nil {
-		log.Fatalf("error initializing firebase app: %v\n", err)
-	}
-	client, err := app.Auth(ctx)
-	if err != nil {
-		log.Fatalf("error initializing firebase client: %v\n", err)
+// func createCustomTokenByUID(uid string) (customToken string){
+// 	ctx := context.Background()
+// 	app, err := FirebaseInit()
+// 	if err != nil {
+// 		log.Fatalf("error initializing firebase app: %v\n", err)
+// 	}
+// 	client, err := app.Auth(ctx)
+// 	if err != nil {
+// 		log.Fatalf("error initializing firebase client: %v\n", err)
+// 	}
+
+// 	customToken, err = client.CustomToken(ctx, uid)
+// 	if err != nil {
+// 		log.Fatalf("error minting custom token: %v\n", err)
+// 	}
+
+// 	return
+// }
+
+func genIDToken(c echo.Context) error{
+	params := new(UserLoginParams)
+	if err := c.Bind(params); err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
-	customToken, err = client.CustomToken(ctx, uid)
+	apiKey := GetEnv("FIREBASE_WEB_API_KEY")
+	uri := fmt.Sprintf("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=%s", apiKey)
+
+	requestBody := &UserLoginParams{Email: params.Email, Password: params.Password}
+	jsonStr, err := json.Marshal(requestBody)
 	if err != nil {
-		log.Fatalf("error minting custom token: %v\n", err)
+		return c.JSON(http.StatusBadRequest, err.Error())
+	}
+	req, err := http.NewRequest(
+		"POST",
+		uri,
+		bytes.NewBuffer(jsonStr),
+	)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
-	return
-}
-
-func genIDTokenForDebug(uid string) string{
-	ctx := context.Background()
-	app, err := FirebaseInit()
+  req.Header.Set("Content-Type", "application/json")
+	httpClient := &http.Client{}
+	response, err := httpClient.Do(req)
 	if err != nil {
-		log.Fatalf("error initializing firebase app: %v\n", err)
-	}
-	client, err := app.Auth(ctx)
-	if err != nil {
-		log.Fatalf("error initializing firebase client: %v\n", err)
+		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
-	customToken, err := client.CustomToken(ctx, uid)
-	if err != nil {
-		log.Fatalf("error creating custom token: %v\n", err)
-	}
-	payload := map[string]interface{}{
-		"token":             token,
-		"returnSecureToken": true,
-	}
-	req, err := json.Marshal(payload)
-	if err != nil {
-		log.Fatalf("error occured: %v\n", err)
-	}
-	idToken, err := getIDTokenFromUID(uid)
-	response := getDebugIDToken(idToken)
-	if err != nil {
-		panic("エラーが発生しました")
+	defer response.Body.Close()
+
+	var idToken IDToken
+	body, _ := io.ReadAll(response.Body)
+	if err := json.Unmarshal(body, &idToken); err != nil {
+		return c.JSON(http.StatusBadRequest, err.Error())
 	}
 
-	return c.JSON(http.StatusOK, response)
+	return c.JSON(http.StatusOK, idToken)
 }
 
 func main() {
@@ -182,5 +226,6 @@ func main() {
 	e.POST("/users", createUser)
 	e.PATCH("/users", updateUser)
 	e.DELETE("/users/:id", deleteUser)
+	e.POST("/users/id_token", genIDToken)
 	e.Logger.Fatal(e.Start(":8080"))
 }
