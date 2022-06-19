@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"net/http"
 
@@ -121,7 +122,7 @@ func deleteUser(c echo.Context) error {
 	return err
 }
 
-func createCustomToken(uid string) (customToken string){
+func createCustomTokenByUID(uid string) (customToken string){
 	ctx := context.Background()
 	app, err := FirebaseInit()
 	if err != nil {
@@ -140,6 +141,37 @@ func createCustomToken(uid string) (customToken string){
 	return
 }
 
+func genIDTokenForDebug(uid string) string{
+	ctx := context.Background()
+	app, err := FirebaseInit()
+	if err != nil {
+		log.Fatalf("error initializing firebase app: %v\n", err)
+	}
+	client, err := app.Auth(ctx)
+	if err != nil {
+		log.Fatalf("error initializing firebase client: %v\n", err)
+	}
+
+	customToken, err := client.CustomToken(ctx, uid)
+	if err != nil {
+		log.Fatalf("error creating custom token: %v\n", err)
+	}
+	payload := map[string]interface{}{
+		"token":             token,
+		"returnSecureToken": true,
+	}
+	req, err := json.Marshal(payload)
+	if err != nil {
+		log.Fatalf("error occured: %v\n", err)
+	}
+	idToken, err := getIDTokenFromUID(uid)
+	response := getDebugIDToken(idToken)
+	if err != nil {
+		panic("エラーが発生しました")
+	}
+
+	return c.JSON(http.StatusOK, response)
+}
 
 func main() {
 	e := echo.New()
